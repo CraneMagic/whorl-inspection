@@ -10,7 +10,7 @@ name: Test Build Python
 
 on:
   push:
-    branches: [ production, develop ]
+    branches: [ production ]
   pull_request:
     branches: [ production ]
 
