@@ -26,6 +26,7 @@ jobs:
         artifact: ${{ github.event.repository.name }}
         python_version: 3.7
         use-dependencies: true
+        no-console: true
     - name: Upload Artifact
       uses: actions/upload-artifact@v2
       with:
@@ -43,6 +44,7 @@ jobs:
           artifact: ${{ github.event.repository.name }}
           python_version: 3.7
           use-dependencies: true
+          no-console: true
       - name: Upload Artifact
         uses: actions/upload-artifact@v2
         with:
@@ -60,6 +62,7 @@ jobs:
           artifact: ${{ github.event.repository.name }}
           python_version: 3.7
           use-dependencies: true
+          no-console: true
       - name: Upload Artifact
         uses: actions/upload-artifact@v2
         with:
