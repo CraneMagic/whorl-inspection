@@ -1,2 +1,2 @@
 source venv/bin/activate
-pyinstaller -F -w  --name 'Whorl Inspection' app.py
+pyinstaller -F -w -y --name 'Whorl Inspection' app.py
