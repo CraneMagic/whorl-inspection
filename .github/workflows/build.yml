@@ -18,7 +18,7 @@ jobs:
   build_linux:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Test Build Python Linux
       uses: ReneeDress/pyinstaller-build@master
       with:
@@ -28,7 +28,7 @@ jobs:
         use-dependencies: true
         no-console: true
     - name: Upload Artifact
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: ${{ github.event.repository.name }}@${{ github.sha }}
         path: dist
@@ -36,7 +36,7 @@ jobs:
   build_windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Test Build Python Windows
         uses: ReneeDress/pyinstaller-build@master
         with:
@@ -46,7 +46,7 @@ jobs:
           use-dependencies: true
           no-console: true
       - name: Upload Artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: ${{ github.event.repository.name }}@${{ github.sha }}
           path: dist
@@ -54,7 +54,7 @@ jobs:
   build_macos:
     runs-on: macos-12
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Test Build Python MacOS
         uses: ReneeDress/pyinstaller-build@master
         with:
@@ -64,7 +64,7 @@ jobs:
           use-dependencies: true
           no-console: true
       - name: Upload Artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: ${{ github.event.repository.name }}@${{ github.sha }}
           path: dist
