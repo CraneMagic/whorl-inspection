@@ -22,7 +22,7 @@ jobs:
     - name: Test Build Python Linux
       uses: eric2788/pyinstaller-build@master
       with:
-        main: main
+        main: app
         artifact: Program
         python_version: 3.7
         use-dependencies: true
@@ -39,7 +39,7 @@ jobs:
       - name: Test Build Python Windows
         uses: eric2788/pyinstaller-build@master
         with:
-          main: main
+          main: app
           artifact: Program
           python_version: 3.7
           use-dependencies: true
