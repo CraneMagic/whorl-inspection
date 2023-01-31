@@ -20,7 +20,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Test Build Python Linux
-      uses: eric2788/pyinstaller-build@master
+      uses: ReneeDress/pyinstaller-build@master
       with:
         main: app
         artifact: ${{ github.event.repository.name }}
@@ -37,7 +37,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Test Build Python Windows
-        uses: eric2788/pyinstaller-build@master
+        uses: ReneeDress/pyinstaller-build@master
         with:
           main: app
           artifact: ${{ github.event.repository.name }}
@@ -54,7 +54,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Test Build Python MacOS
-        uses: eric2788/pyinstaller-build@master
+        uses: ReneeDress/pyinstaller-build@master
         with:
           main: app
           artifact: ${{ github.event.repository.name }}
