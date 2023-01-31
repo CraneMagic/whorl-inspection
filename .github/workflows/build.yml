@@ -48,3 +48,20 @@ jobs:
         with:
           name: ${{ github.event.repository.name }}
           path: dist
+  
+  build_macos:
+    runs-on: macos-12
+    steps:
+      - uses: actions/checkout@v2
+      - name: Test Build Python MacOS
+        uses: eric2788/pyinstaller-build@master
+        with:
+          main: app
+          artifact: Program
+          python_version: 3.7
+          use-dependencies: true
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ github.event.repository.name }}
+          path: dist
