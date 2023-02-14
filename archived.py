@@ -8,150 +8,96 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
-from utils import printLog
-
-import threading
- 
-exitFlag = 0
- 
-class cannyThread (threading.Thread):   #继承父类threading.Thread
-    def __init__(self, auditLogInstance, imgPath):
-        threading.Thread.__init__(self)
-        self.auditLogInstance = auditLogInstance
-        self.imgPath = imgPath
-        self.srcImg = None
-        self.resImg = None
-    def run(self):                   #把要执行的代码写到run函数里面 线程在创建后会直接运行run函数 
-        printLog(self.auditLogInstance, "Starting " + self.imgPath)
-        pathList = self.imgPath.split('/')
-        pathList.insert(-1, 'new')
-        # print('/'.join(pathList))
-        self.srcImg = read_img_from_src(self.imgPath)
-        self.resImg = img_edge_detecting(self.srcImg, pathList[-1])
-        cv.imwrite('/'.join(pathList), self.resImg)
-        printLog(self.auditLogInstance, "Exiting " + self.imgPath)
 
 
-def read_img_from_src(imgPathStr):
-    global auditLog
-    printLog(auditLog, '读取图片... %s' % imgPathStr)
+def select_image_cb():
+    global imagePath, source_img_tk, sourceImageCanvas
+    selectImage = tk_filedialog.askopenfilename(title='选择图片', filetypes=[('PNG', '*.png'), ('JPG', '*.jpg'), ('BMP', '*.bmp')])
+    imagePath.set(selectImage)
 
-    img = cv.imread(imgPathStr)
-    img = img[750:1750, 1000:3000]
-    return img
+    imagePathStr = imagePath.get()
+    print('选择图片：', imagePathStr)
 
-def img_edge_detecting(img, imgName):
-    global auditLog
-    printLog(auditLog, '边缘检测... %s' % imagePathsStr[0])
+    img = cv.imread(imagePathStr)
+    source_img_src = Image.fromarray(img)
+    currentSourceWidth = int(source_img_src.size[0] / source_img_src.size[1] * imageHeight)
+    currentSourceHeight = int(source_img_src.size[1] / source_img_src.size[0] * imageWidth)
+    # source_img_src = source_img_src.resize([imageWidth, currentSourceHeight])
+    source_img_src = source_img_src.resize([currentSourceWidth, imageHeight])
+    source_img_tk = ImageTk.PhotoImage(image=source_img_src)
+    # sourceImageCanvas.config(height=currentSourceHeight)
+    sourceImageCanvas.config(width=currentSourceWidth)
+    # sourceImageCanvas.create_image((imageWidth/2, currentSourceHeight/2), image=source_img_tk)
+    sourceImageCanvas.create_image((currentSourceWidth/2, imageHeight/2), image=source_img_tk)
 
+def analyze_image_cb():
+    global container, imageWidth
+    global imagePath
     global medianBlurVar_N, bilaterFilterVar_d, bilaterFilterVar_sigmaColor, bilaterFilterVar_sigmaSpace, cannyThereshold1Var, cannyThereshold2Var
-    global curImgs
+    global source_img_tk, sourceImageCanvas, result_img_tk, resultImageCanvas, result_img
+
+    imagePathStr = imagePath.get()
+    print('边缘检测中', imagePathStr)
+
+    img = cv.imread(imagePathStr)
+    
     img_gray = cv.cvtColor(img, cv.COLOR_RGB2GRAY)
     img_gray_blur = img_gray
     img_gray_blur = cv.medianBlur(img_gray, medianBlurVar_N.get())
     img_gray_bilateral = cv.bilateralFilter(img_gray_blur, bilaterFilterVar_d.get(), bilaterFilterVar_sigmaColor.get(), bilaterFilterVar_sigmaSpace.get())
     result_img = cv.Canny(img_gray_bilateral, cannyThereshold1Var.get(), cannyThereshold2Var.get())
-    curImgs[imgName] = result_img
-    return result_img
 
-class whorlThread (threading.Thread):   #继承父类threading.Thread
-    def __init__(self, auditLogInstance, imgName, srcImg):
-        threading.Thread.__init__(self)
-        self.auditLogInstance = auditLogInstance
-        self.imgName = imgName
-        self.srcImg = srcImg
-        self.resImg = None
-    def run(self):                   #把要执行的代码写到run函数里面 线程在创建后会直接运行run函数 
-        printLog(self.auditLogInstance, "开始分析数据 " + self.imgName)
-        # pathList = self.imgPath.split('/')
-        # pathList.insert(-1, 'new')
-        self.resImg = analyze_whorl(self.srcImg)
-        # pathList = self.imgPath.split('/')
-        # pathList.insert(-1, 'new')
-        # print('/'.join(pathList))
-        # cv.imwrite('/'.join(pathList), self.resImg)
-        printLog(self.auditLogInstance, "分析数据结束 " + self.imgName)
+    source_img_src = Image.fromarray(img)
+    currentSourceWidth = int(source_img_src.size[0] / source_img_src.size[1] * imageHeight)
+    currentSourceHeight = int(source_img_src.size[1] / source_img_src.size[0] * imageWidth)
+    # source_img_src = source_img_src.resize([imageWidth, currentSourceHeight])
+    source_img_src = source_img_src.resize([currentSourceWidth, imageHeight])
+    source_img_tk = ImageTk.PhotoImage(image=source_img_src)
+    # sourceImageCanvas.config(height=currentSourceHeight)
+    sourceImageCanvas.config(width=currentSourceWidth)
+    # sourceImageCanvas.create_image((imageWidth/2, currentSourceHeight/2), image=source_img_tk)
+    sourceImageCanvas.create_image((currentSourceWidth/2, imageHeight/2), image=source_img_tk)
 
+    result_img_src = Image.fromarray(result_img)
+    currentResultWidth = int(result_img_src.size[0] / result_img_src.size[1] * imageHeight)
+    currentResultHeight = int(result_img_src.size[1] / result_img_src.size[0] * imageWidth)
+    # result_img_src = result_img_src.resize([imageWidth, currentResultHeight])
+    result_img_src = result_img_src.resize([currentResultWidth, imageHeight])
+    result_img_tk = ImageTk.PhotoImage(image=result_img_src)
+    # resultImageCanvas.config(height=currentResultHeight)
+    resultImageCanvas.config(width=currentResultWidth)
+    # resultImageCanvas.create_image((imageWidth/2, currentResultHeight/2), image=result_img_tk)
+    resultImageCanvas.create_image((currentResultWidth/2, imageHeight/2), image=result_img_tk)
 
-def analyze_whorl(processedImg):
-    print('Analyze Whorl', processedImg)
+    print('analyze_image_cb: %s' % result_img)
 
-def select_images_cb():
-    global auditLog
-    global imagePathsVar, imagePathsStr
-    global imagePath, source_img_tk, sourceImageCanvas, imagePathList
-    selectImages = tk_filedialog.askopenfilenames(title='选择图片', filetypes=[('PNG', '*.png'), ('JPG', '*.jpg'), ('BMP', '*.bmp')])
-    # selectDirect = tk_filedialog.askdirectory(title='选择文件夹')
-    # print(selectDirect)
-    # print(selectImages)
-
-    for i in range(len(selectImages)):
-        imagePathsVar.append(tk.StringVar())
-        imagePathsVar[i].set(selectImages[i])
-
-    for i in range(len(imagePathsVar)):
-        imagePathsStr.append(imagePathsVar[i].get())
-        imagePathList.insert(0, imagePathsStr[i].split('/')[-1])
-        thread = cannyThread(auditLog, imagePathsStr[i])
-        thread.start()
-        
-    # img = cv.imread(imagePathsStr[0])
-    # source_img_src = Image.fromarray(img)
-    # currentSourceWidth = int(source_img_src.size[0] / source_img_src.size[1] * imageHeight)
-    # currentSourceHeight = int(source_img_src.size[1] / source_img_src.size[0] * imageWidth)
-    # # source_img_src = source_img_src.resize([imageWidth, currentSourceHeight])
-    # source_img_src = source_img_src.resize([currentSourceWidth, imageHeight])
-    # source_img_tk = ImageTk.PhotoImage(image=source_img_src)
-    # # sourceImageCanvas.config(height=currentSourceHeight)
-    # sourceImageCanvas.config(width=currentSourceWidth)
-    # # sourceImageCanvas.create_image((imageWidth/2, currentSourceHeight/2), image=source_img_tk)
-    # sourceImageCanvas.create_image((currentSourceWidth/2, imageHeight/2), image=source_img_tk)
-
-
-def redo_canny():
-    global imagePathsVar
-    for i in range(len(imagePathsVar)):
-        thread = cannyThread(auditLog, imagePathsStr[i])
-        thread.start()
-
-def redo_whorl():
-    global imagePathsVar
-    for i in range(len(imagePathsVar)):
-        imgName = imagePathsStr[i].split('/')[-1]
-        thread = whorlThread(auditLog, imgName, curImgs[imgName])
-        thread.start()
 
 def clear_image_cb(val):
-    print('clear_image_cb')
-    # redo_canny()
+    global result_img_tk, resultImageCanvas
+    result_img_tk = None
+    # resultImageCanvas
 
 def clear_image_cb_medianBlurVar_N(val):
-    # global result_img_tk, resultImageCanvas
-    # result_img_tk = None
+    global result_img_tk, resultImageCanvas
+    result_img_tk = None
     if int(val) % 2 == 0:
         medianBlurScale_n.set(int(val) + 1)
-    # redo_canny()
-
 
 def clear_image_cb_bilaterFilterVar_d(val):
-    # global result_img_tk, resultImageCanvas
-    # result_img_tk = None
+    global result_img_tk, resultImageCanvas
+    result_img_tk = None
     if int(val) % 2 == 0:
         bilaterFilterScale_d.set(int(val) + 1)
-    # redo_canny()
-
 
 def collect_images_from_live_camera(val):
     print('Collect Images from Live Camera')
 
 
 def image_preprocessing():
-    global imagePathsVar, imagePathList, source_img_tk, sourceImageCanvas, result_img_tk, resultImageCanvas, result_img
+    global imagePath, source_img_tk, sourceImageCanvas, result_img_tk, resultImageCanvas, result_img
     global medianBlurVar_N, bilaterFilterVar_d, bilaterFilterVar_sigmaColor, bilaterFilterVar_sigmaSpace, cannyThereshold1Var, cannyThereshold2Var
 
-    imagePreprocessingFrame = tk.Frame(container, padx=20, pady=20, 
-        # bg='#efefef'
-    )
+    imagePreprocessingFrame = tk.Frame(container, padx=20, pady=20, bg='#efefef')
     imagePreprocessingFrame.grid(column=0, row=0, sticky=tk.NW)
 
     imagePreprocessingFrame_L = tk.Frame(imagePreprocessingFrame, padx=20, pady=20)
@@ -164,26 +110,23 @@ def image_preprocessing():
     
     # imagePreprocessingFrame_L
     colBtn = tk.Button(imagePreprocessingFrame_L, text='采集摄像头图片(暂无)', command=collect_images_from_live_camera)
-    selBtn = tk.Button(imagePreprocessingFrame_L, text='选择本地图片', command=select_images_cb)
+    selBtn = tk.Button(imagePreprocessingFrame_L, text='选择本地图片', command=select_image_cb)
     colBtn.grid(column=0, row=0, **btnProps)
     selBtn.grid(column=1, row=0, **btnProps)
 
-    # imagePathEntry = tk.Entry(imagePreprocessingFrame_L, textvariable=imagePath, width=28, state='disabled')
-    # imagePathEntry.grid(column=0, row=1, sticky=tk.NW, columnspan=2)
-
-    imagePathList = tk.Listbox(imagePreprocessingFrame_L, width=32)
-    imagePathList.grid(column=0, row=1, sticky=tk.NW, columnspan=2)
+    imagePathEntry = tk.Entry(imagePreprocessingFrame_L, textvariable=imagePath, width=28, state='disabled')
+    imagePathEntry.grid(column=0, row=1, sticky=tk.NW, columnspan=2)
 
     sourceImageCanvas = tk.Canvas(imagePreprocessingFrame_L, width=imageWidth, height=imageHeight, bg='blue')
-    # sourceImageCanvas.grid(column=0, row=2, sticky=tk.NW, columnspan=2)
+    sourceImageCanvas.grid(column=0, row=2, sticky=tk.NW, columnspan=2)
 
 
     # imagePreprocessingFrame_C
     medianBlurRow, bilaterFilterRow, cannyTheresholdRow = 0, 1, 2
     
     # medianBlur
-    medianBlurVar_N = tk.IntVar(value=35)
-    medianBlurLf = tk.LabelFrame(imagePreprocessingFrame_C, text='中值滤波', padx=16, pady=8)
+    medianBlurVar_N = tk.IntVar(value=9)
+    medianBlurLf = tk.LabelFrame(imagePreprocessingFrame_C, text='中值滤波', padx=8, pady=0)
     medianBlurLf.grid(column=0, row=medianBlurRow, sticky=tk.NW)
     # medianBlur_Layout
     tk.Label(medianBlurLf, text='卷积核 N', justify='left').grid(column=0, row=0, sticky=tk.W)
@@ -192,8 +135,8 @@ def image_preprocessing():
     medianBlurScale_n.grid(column=1, row=0, sticky=tk.W)
 
     # bilaterFilter
-    bilaterFilterVar_d, bilaterFilterVar_sigmaColor, bilaterFilterVar_sigmaSpace = tk.IntVar(value=15), tk.IntVar(value=150), tk.IntVar(value=150)
-    bilaterFilterLf = tk.LabelFrame(imagePreprocessingFrame_C, text='双边滤波', padx=16, pady=8)
+    bilaterFilterVar_d, bilaterFilterVar_sigmaColor, bilaterFilterVar_sigmaSpace = tk.IntVar(value=9), tk.IntVar(value=150), tk.IntVar(value=150)
+    bilaterFilterLf = tk.LabelFrame(imagePreprocessingFrame_C, text='双边滤波', padx=8, pady=0)
     bilaterFilterLf.grid(column=0, row=bilaterFilterRow, sticky=tk.NW)
     # bilaterFilter_Layout
     tk.Label(bilaterFilterLf, text='模板大小 d', justify='left').grid(column=0, row=0, sticky=tk.W)
@@ -208,28 +151,26 @@ def image_preprocessing():
     bilaterFilterScale_sigmaSpace.grid(column=1, row=2, sticky=tk.W)
 
     # canny
-    cannyThereshold1Var, cannyThereshold2Var = tk.IntVar(value=10), tk.IntVar(value=40)
-    cannyLf = tk.LabelFrame(imagePreprocessingFrame_C, text='Canny', padx=16, pady=8)
+    cannyThereshold1Var, cannyThereshold2Var = tk.IntVar(value=10), tk.IntVar(value=20)
+    cannyLf = tk.LabelFrame(imagePreprocessingFrame_C, text='Canny', padx=8, pady=0)
     cannyLf.grid(column=0, row=cannyTheresholdRow, sticky=tk.NW)
     # canny_Layout
     tk.Label(cannyLf, text='较小阈值 minVal', justify='left').grid(column=0, row=0, sticky=tk.W)
-    cannyThereshold1Scale = tk.Scale(cannyLf, variable=cannyThereshold1Var, from_=0, to=60, orient='horizontal', command=clear_image_cb)
+    cannyThereshold1Scale = tk.Scale(cannyLf, variable=cannyThereshold1Var, from_=1, to=200, orient='horizontal', command=clear_image_cb)
     cannyThereshold1Scale.grid(column=1, row=0, sticky=tk.W)
     tk.Label(cannyLf, text='较大阈值 maxVal', justify='left').grid(column=0, row=1, sticky=tk.W)
-    cannyThereshold2Scale = tk.Scale(cannyLf, variable=cannyThereshold2Var, from_=0, to=60, orient='horizontal', command=clear_image_cb)
+    cannyThereshold2Scale = tk.Scale(cannyLf, variable=cannyThereshold2Var, from_=1, to=200, orient='horizontal', command=clear_image_cb)
     cannyThereshold2Scale.grid(column=1, row=1, sticky=tk.W)
 
     # imagePreprocessingFrame_R
-    anlBtn = tk.Button(imagePreprocessingFrame_R, text='分析图片', command=redo_canny)
+    anlBtn = tk.Button(imagePreprocessingFrame_R, text='分析图片', command=analyze_image_cb)
     anlBtn.grid(column=0, row=0, **btnProps)
-    anlBtn = tk.Button(imagePreprocessingFrame_R, text='分析数据', command=redo_whorl)
-    anlBtn.grid(column=1, row=0, **btnProps)
 
     imagePathEntry = tk.Entry(imagePreprocessingFrame_R, textvariable=imagePath, width=28, state='disabled')
     imagePathEntry.grid(column=0, row=1, sticky=tk.NW, columnspan=2)
 
     resultImageCanvas = tk.Canvas(imagePreprocessingFrame_R, width=imageWidth, height=imageHeight, bg='red')
-    # resultImageCanvas.grid(column=0, row=2, sticky=tk.NW, columnspan=2)
+    resultImageCanvas.grid(column=0, row=2, sticky=tk.NW, columnspan=2)
 
     print('image_preprocessing: %s' % result_img)
 
@@ -250,7 +191,7 @@ def print_result_img():
     canvas.get_tk_widget().pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True)
 
 def main_fuc():
-    global container, imageWidth, imageHeight, imagePathsVar
+    global container, imageWidth, imageHeight
     # global btnProps
 
     # global imagePath
@@ -262,11 +203,11 @@ def main_fuc():
 
     print('main_fuc: %s' % result_img)
 
-    # printBtn = tk.Button(container, text='打印结果', command=print_result_img)
-    # printBtn.grid(column=0, row=1, sticky=tk.NW)
+    printBtn = tk.Button(container, text='打印结果', command=print_result_img)
+    printBtn.grid(column=0, row=1, sticky=tk.NW)
 
-    # chartFrame = tk.Frame(container)
-    # chartFrame.grid(column=0, row=2, sticky=tk.NW)
+    chartFrame = tk.Frame(container)
+    chartFrame.grid(column=0, row=2, sticky=tk.NW)
 
     # result_np = np.array(result_img)
     # f = plt.Figure(figsize=(5,5), dpi=64)
@@ -290,7 +231,7 @@ if __name__ == '__main__':
     window = tk.Tk()                                    # 创建主窗口
     # 设置窗口大小
     winWidth = 1200
-    winHeight = 900
+    winHeight = 800
     # 获取屏幕分辨率
     screenWidth = window.winfo_screenwidth()
     screenHeight = window.winfo_screenheight()
@@ -306,7 +247,7 @@ if __name__ == '__main__':
     container = tk.Frame(
         # padx=20, 
         # pady=20, 
-        # background='#aaeeaa'
+        background='#aaeeaa'
     )
     container.pack()
 
@@ -321,11 +262,6 @@ if __name__ == '__main__':
 
 
     # 变量声明
-    imagePathsVar = []
-    imagePathsStr = []
-    curImgs = {}
-
-
     imagePath = tk.StringVar()
     imagePath.set('')
     source_img_tk = None
@@ -336,10 +272,5 @@ if __name__ == '__main__':
     imageHeight = 200
 
     main_fuc()
-
-    auditLogFrame = tk.LabelFrame(window, text='日志输出', padx=20, pady=10)
-    auditLog = tk.Listbox(auditLogFrame, width=100, bd=0)
-    auditLog.pack()
-    auditLogFrame.pack()
 
     window.mainloop()                                   # 图形界面循环
