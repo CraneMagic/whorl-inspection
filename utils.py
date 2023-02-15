@@ -6,6 +6,7 @@ import time
 def printLog(auditLogInstance, logMsg):
     log = '[%s] %s' % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), logMsg)
     auditLogInstance.insert(tk.END, log)
+    auditLogInstance.yview(tk.END)
     print(log)
 
 # import threading

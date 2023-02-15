@@ -63,16 +63,17 @@ class whorlThread (threading.Thread):   #继承父类threading.Thread
         self.auditLogInstance = auditLogInstance
         self.imgName = imgName
         self.srcImg = srcImg
-        self.resPts = None
+        self.resPtsYx = None
     def run(self):                   #把要执行的代码写到run函数里面 线程在创建后会直接运行run函数 
         printLog(self.auditLogInstance, "开始分析数据 " + self.imgName)
         # pathList = self.imgPath.split('/')
         # pathList.insert(-1, 'new')
-        self.resPts = analyze_whorl(self.srcImg, self.imgName)
+        self.resPtsYx = analyze_whorl(self.srcImg, self.imgName)
         # pathList = self.imgPath.split('/')
         # pathList.insert(-1, 'new')
         # print('/'.join(pathList))
-        # cv.imwrite('/'.join(pathList), self.resPts)
+        # cv.imwrite('/'.join(pathList), self.resPtsYx)
+        curYx[self.imgName] = self.resPtsYx
         printLog(self.auditLogInstance, "分析数据结束 " + self.imgName)
 
 def pts_sort_by_x(yx):
@@ -99,12 +100,11 @@ def analyze_whorl(processedImg, imgName):
     # print(pts_sort_by_y(res_yx)[0], pts_sort_by_y(res_yx)[-1])
     pt_sta = pts_sort_by_x(res_yx)[0]
     pt_end = pts_sort_by_x(res_yx)[-1]
-    pt_top = pts_sort_by_y(res_yx)[0]
-    pt_btm = pts_sort_by_y(res_yx)[-1]
+    pt_btm = pts_sort_by_y(res_yx)[0]
+    pt_top = pts_sort_by_y(res_yx)[-1]
     print(pt_sta, pt_end)
     print(pt_top, pt_btm)
-    plt.plot(res_yx[1], res_yx[0], 'o')
-    plt.savefig()
+    return res_yx
 
     
 
@@ -169,11 +169,135 @@ def redo_canny():
         thread.start()
 
 def redo_whorl():
-    global imagePathsVar
-    for i in range(len(imagePathsVar)):
+    global imagePathsStr, curYx
+    for i in range(len(imagePathsStr)):
         imgName = imagePathsStr[i].split('/')[-1]
         thread = whorlThread(auditLog, imgName, curImgs[imgName])
         thread.start()
+        # print(thread.resPtsYx[1], thread.resPtsYx[0])
+    # print('curYx', curYx)
+
+def redo_count():
+    global imagePathsStr, curYx
+    # print('curYx', curYx)
+    for img_index in range(len(imagePathsStr)):
+        imagePath = imagePathsStr[img_index]
+        imgName = imagePath.split('/')[-1]
+        yx = curYx[imgName]
+        pt_sta = pts_sort_by_x(yx)[0]
+        pt_end = pts_sort_by_x(yx)[-1]
+        pt_btm = pts_sort_by_y(yx)[0]
+        pt_top = pts_sort_by_y(yx)[-1]
+        print(pt_sta, pt_end)
+        print(pt_top, pt_btm)
+
+        pathList = imagePath.split('/')
+        pathList.insert(-1, 'figuring_result')
+        if not os.path.exists('/'.join(pathList[0: -1])):
+            os.mkdir('/'.join(pathList[0: -1]))
+        
+        [y, x] = yx
+        plt.xlim(0, 2000)
+        plt.ylim(0, 1000)
+        plt.plot(x, y, 'o', markersize=1)
+        plt.plot(pt_sta[0], pt_sta[1], 'o', markersize=6)
+        plt.plot(pt_end[0], pt_end[1], 'o', markersize=6)
+        plt.plot(pt_top[0], pt_top[1], 'o', markersize=6)
+        plt.plot(pt_btm[0], pt_btm[1], 'o', markersize=6)
+        plt.savefig('/'.join(pathList)[0: -3] + 'png')
+        plt.clf()
+
+        full_range = pt_top[1] - pt_btm[1]
+        if pt_sta[1] > pt_end[1]:
+            upper_range = [pt_sta[1], pt_top[1]]
+            lower_range = [pt_btm[1], pt_end[1]]
+        else:
+            upper_range = [pt_end[1], pt_top[1]]
+            lower_range = [pt_btm[1], pt_sta[1]]
+        if upper_range[1] - upper_range[0] < int(full_range / 3):
+            upper_range = [upper_range[1] - int(full_range / 3), upper_range[1]]
+        if lower_range[1] - lower_range[0] < int(full_range / 3):
+            lower_range = [lower_range[0], lower_range[0] + int(full_range / 3)]
+        
+
+        pts = pts_sort_by_x(yx)
+
+        # print(upper_range, pts)
+
+        plt.xlim(0, 2000)
+        plt.ylim(0, 1000)
+
+        # upper
+        upper_pts = []
+        prev_x = pts[0][0]
+        n = 0
+        roi_pts = [[]]
+        for img_index in range(len(pts)):
+            [x, y] = pts[img_index]
+            if upper_range[0] <= y <= upper_range[1] and x - prev_x < 10:
+                roi_pts[n].append([x, y])
+                prev_x = x
+            elif upper_range[0] <= y <= upper_range[1] and not x - prev_x < 10:
+                n += 1
+                roi_pts.append([])
+                roi_pts[n].append([x, y])
+                prev_x = x
+        for roi_index in range(len(roi_pts)):
+            cur_roi_pts = roi_pts[roi_index]
+            xs = [i[0] for i in cur_roi_pts]
+            ys = [i[1] for i in cur_roi_pts]
+            [a, b, c] = np.polyfit(xs, ys, 2)
+            print([a, b, c], len(cur_roi_pts))
+            model = np.poly1d([a, b, c])
+            upper_pts.append([-b/(2*a), (4*a*c - b*b) / (4*a)])
+            polyline = np.linspace(xs[0], xs[-1], len(cur_roi_pts))
+            plt.plot(polyline, model(polyline))
+        
+        # lower
+        lower_pts = []
+        btm_prev_x = pts[0][0]
+        btm_n = 0
+        btm_roi_pts = [[]]
+        for img_index in range(len(pts)):
+            [x, y] = pts[img_index]
+            if lower_range[0] <= y <= lower_range[1] and x - btm_prev_x < 10:
+                btm_roi_pts[btm_n].append([x, y])
+                btm_prev_x = x
+            elif lower_range[0] <= y <= lower_range[1] and not x - btm_prev_x < 10:
+                btm_n += 1
+                btm_roi_pts.append([])
+                btm_roi_pts[btm_n].append([x, y])
+                btm_prev_x = x
+        print(len(btm_roi_pts))
+        for roi_index in range(len(btm_roi_pts)):
+            cur_roi_pts = btm_roi_pts[roi_index]
+            if not len(cur_roi_pts):
+                continue
+            xs = [i[0] for i in cur_roi_pts]
+            ys = [i[1] for i in cur_roi_pts]
+            [a, b, c] = np.polyfit(xs, ys, 2)
+            print([a, b, c], len(cur_roi_pts))
+            model = np.poly1d([a, b, c])
+            lower_pts.append([-b/(2*a), (4*a*c - b*b) / (4*a)])
+            polyline = np.linspace(xs[0], xs[-1], len(cur_roi_pts))
+            plt.plot(polyline, model(polyline))
+        
+        
+        pathList = imagePath.split('/')
+        pathList.insert(-1, 'polyfit_curve_result')
+        if not os.path.exists('/'.join(pathList[0: -1])):
+            os.mkdir('/'.join(pathList[0: -1]))
+        plt.savefig('/'.join(pathList)[0: -3] + 'png')
+        plt.clf()
+
+        upper_dst = sum([(upper_pts[p_i+1][0] - upper_pts[p_i][0]) for p_i in range(len(upper_pts) - 1)]) / (len(upper_pts) - 1)
+        lower_dst = sum([(lower_pts[p_i+1][0] - lower_pts[p_i][0]) for p_i in range(len(lower_pts) - 1)]) / (len(lower_pts) - 1)
+
+        global auditLog, dimedivision
+        dim = dimedivision.get()
+        printLog(auditLog, '[%s] 牙顶平均: %f px; 牙底平均: %f px; 齿距: %f px (%f mm)' % (imgName, upper_dst, lower_dst, (upper_dst + lower_dst) / 2, (upper_dst + lower_dst) / 2 / dim))      
+        
+
 
 def clear_image_cb(val):
     print('clear_image_cb')
@@ -198,8 +322,19 @@ def clear_image_cb_bilaterFilterVar_d(val):
 def collect_images_from_live_camera(val):
     print('Collect Images from Live Camera')
 
+def clear_list():
+    global imagePathsVar, imagePathsStr, curImgs, curYx, imagePathList
+    imagePathsVar = []
+    imagePathsStr = []
+    curImgs = {}
+    curYx = {}
+    imagePathList.delete(0,tk.END)
+    global auditLog
+    printLog(auditLog, '清空列表')
+
 
 def image_preprocessing():
+    global dimedivision
     global imagePathsVar, imagePathList, source_img_tk, sourceImageCanvas, result_img_tk, resultImageCanvas, result_img
     global medianBlurVar_N, bilaterFilterVar_d, bilaterFilterVar_sigmaColor, bilaterFilterVar_sigmaSpace, cannyThereshold1Var, cannyThereshold2Var
 
@@ -217,13 +352,14 @@ def image_preprocessing():
     
     
     # imagePreprocessingFrame_L
-    colBtn = tk.Button(imagePreprocessingFrame_L, text='采集摄像头图片(暂无)', command=collect_images_from_live_camera)
+    # colBtn = tk.Button(imagePreprocessingFrame_L, text='采集摄像头图片(暂无)', command=collect_images_from_live_camera)
+    colBtn = tk.Button(imagePreprocessingFrame_L, text='清空列表', command=clear_list)
     selBtn = tk.Button(imagePreprocessingFrame_L, text='选择本地图片', command=select_images_cb)
     colBtn.grid(column=0, row=0, **btnProps)
     selBtn.grid(column=1, row=0, **btnProps)
 
-    # imagePathEntry = tk.Entry(imagePreprocessingFrame_L, textvariable=imagePath, width=28, state='disabled')
-    # imagePathEntry.grid(column=0, row=1, sticky=tk.NW, columnspan=2)
+    imagePathEntry = tk.Entry(imagePreprocessingFrame_L, textvariable=imagePath, width=28, state='disabled')
+    imagePathEntry.grid(column=0, row=1, sticky=tk.NW, columnspan=2)
 
     imagePathList = tk.Listbox(imagePreprocessingFrame_L, width=32)
     imagePathList.grid(column=0, row=1, sticky=tk.NW, columnspan=2)
@@ -276,10 +412,12 @@ def image_preprocessing():
     # imagePreprocessingFrame_R
     anlBtn = tk.Button(imagePreprocessingFrame_R, text='分析图片', command=redo_canny)
     anlBtn.grid(column=0, row=0, **btnProps)
-    anlBtn = tk.Button(imagePreprocessingFrame_R, text='分析数据', command=redo_whorl)
-    anlBtn.grid(column=1, row=0, **btnProps)
+    andBtn = tk.Button(imagePreprocessingFrame_R, text='分析数据', command=redo_whorl)
+    andBtn.grid(column=1, row=0, **btnProps)
+    genBtn = tk.Button(imagePreprocessingFrame_R, text='生成数据', command=redo_count)
+    genBtn.grid(column=2, row=0, **btnProps)
 
-    imagePathEntry = tk.Entry(imagePreprocessingFrame_R, textvariable=imagePath, width=28, state='disabled')
+    imagePathEntry = tk.Entry(imagePreprocessingFrame_R, textvariable=dimedivision, width=28)
     imagePathEntry.grid(column=0, row=1, sticky=tk.NW, columnspan=2)
 
     resultImageCanvas = tk.Canvas(imagePreprocessingFrame_R, width=imageWidth, height=imageHeight, bg='red')
@@ -378,6 +516,7 @@ if __name__ == '__main__':
     imagePathsVar = []
     imagePathsStr = []
     curImgs = {}
+    curYx = {}
 
 
     imagePath = tk.StringVar()
@@ -388,6 +527,9 @@ if __name__ == '__main__':
 
     imageWidth = 250
     imageHeight = 200
+
+    dimedivision = tk.DoubleVar()
+    dimedivision.set(108)
 
     main_fuc()
 
