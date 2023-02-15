@@ -11,6 +11,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from utils import printLog
 
 import threading
+import os
  
 exitFlag = 0
  
@@ -24,10 +25,12 @@ class cannyThread (threading.Thread):   #继承父类threading.Thread
     def run(self):                   #把要执行的代码写到run函数里面 线程在创建后会直接运行run函数 
         printLog(self.auditLogInstance, "Starting " + self.imgPath)
         pathList = self.imgPath.split('/')
-        pathList.insert(-1, 'new')
+        pathList.insert(-1, 'edge_detection_results')
         # print('/'.join(pathList))
         self.srcImg = read_img_from_src(self.imgPath)
         self.resImg = img_edge_detecting(self.srcImg, pathList[-1])
+        if not os.path.exists('/'.join(pathList[0: -1])):
+            os.mkdir('/'.join(pathList[0: -1]))
         cv.imwrite('/'.join(pathList), self.resImg)
         printLog(self.auditLogInstance, "Exiting " + self.imgPath)
 
@@ -60,21 +63,72 @@ class whorlThread (threading.Thread):   #继承父类threading.Thread
         self.auditLogInstance = auditLogInstance
         self.imgName = imgName
         self.srcImg = srcImg
-        self.resImg = None
+        self.resPts = None
     def run(self):                   #把要执行的代码写到run函数里面 线程在创建后会直接运行run函数 
         printLog(self.auditLogInstance, "开始分析数据 " + self.imgName)
         # pathList = self.imgPath.split('/')
         # pathList.insert(-1, 'new')
-        self.resImg = analyze_whorl(self.srcImg)
+        self.resPts = analyze_whorl(self.srcImg, self.imgName)
         # pathList = self.imgPath.split('/')
         # pathList.insert(-1, 'new')
         # print('/'.join(pathList))
-        # cv.imwrite('/'.join(pathList), self.resImg)
+        # cv.imwrite('/'.join(pathList), self.resPts)
         printLog(self.auditLogInstance, "分析数据结束 " + self.imgName)
 
+def pts_sort_by_x(yx):
+    [y, x] = yx
+    return [[x[i], y[i]] for i in np.argsort(x)]
+    
+def pts_sort_by_y(yx):
+    [y, x] = yx
+    return [[x[i], y[i]] for i in np.argsort(y)]
 
-def analyze_whorl(processedImg):
-    print('Analyze Whorl', processedImg)
+def analyze_whorl(processedImg, imgName):
+    global auditLog
+    print('Analyze Whorl', imgName, type(processedImg), processedImg.ndim, processedImg.shape)
+    [yPx, xPx] = processedImg.shape
+    res_pts = []
+    res_yx = [[], []]
+    for j in range(yPx):
+        thread = countThread(auditLog, res_pts, processedImg, j, res_yx)
+        thread.start()
+    # print(res_yx[0], res_yx[1])
+    print(len(pts_sort_by_x(res_yx)))
+    # print(pts_sort_by_y(res_yx))
+    # print(pts_sort_by_x(res_yx)[0], pts_sort_by_x(res_yx)[-1])
+    # print(pts_sort_by_y(res_yx)[0], pts_sort_by_y(res_yx)[-1])
+    pt_sta = pts_sort_by_x(res_yx)[0]
+    pt_end = pts_sort_by_x(res_yx)[-1]
+    pt_top = pts_sort_by_y(res_yx)[0]
+    pt_btm = pts_sort_by_y(res_yx)[-1]
+    print(pt_sta, pt_end)
+    print(pt_top, pt_btm)
+    plt.plot(res_yx[1], res_yx[0], 'o')
+    plt.savefig()
+
+    
+
+class countThread (threading.Thread):   #继承父类threading.Thread
+    def __init__(self, auditLogInstance, res_pts, imgarr, j, res_yx):
+        threading.Thread.__init__(self)
+        self.auditLogInstance = auditLogInstance
+        self.res_pts = res_pts
+        self.imgarr = imgarr
+        self.j = j
+        self.res_yx = res_yx
+    def run(self):                   #把要执行的代码写到run函数里面 线程在创建后会直接运行run函数 
+        # printLog(self.auditLogInstance, "开始采集点 " + str(self.i))
+        get_edge_pts(self.res_pts, self.imgarr, self.j, self.res_yx)
+        # printLog(self.auditLogInstance, "采集点结束 " + str(self.i))
+
+def get_edge_pts(res_pts, imgarr, j, res_yx):
+    for i in range(len(imgarr[j])):
+        if not imgarr[j][i] == 0:
+            # print(i, j, imgarr[i][j])
+            res_pts.append([j, i])
+            res_yx[0].append(j)
+            res_yx[1].append(i)
+
 
 def select_images_cb():
     global auditLog
