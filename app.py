@@ -12,6 +12,7 @@ from utils import printLog
 
 import threading
 import os
+import math
  
 exitFlag = 0
  
@@ -306,10 +307,12 @@ def redo_count():
         all_pts = upper_pts + lower_pts
         all_pts = sorted(all_pts,key=lambda l:l[0])
         printLog(auditLog, '[%s] %s' % (imgName, str(all_pts)))
+        all_kbs = []
         for ap_i in range(len(all_pts) - 1):
-            [a, b] = np.polyfit([all_pts[ap_i][0], all_pts[ap_i+1][0]], [all_pts[ap_i][1], all_pts[ap_i+1][1]], 1)
-            print([a, b])
-            model = np.poly1d([a, b])
+            [k, b] = np.polyfit([all_pts[ap_i][0], all_pts[ap_i+1][0]], [all_pts[ap_i][1], all_pts[ap_i+1][1]], 1)
+            # print([k, b])
+            all_kbs.append([k, b])
+            model = np.poly1d([k, b])
             polyline = np.linspace(all_pts[ap_i][0], all_pts[ap_i+1][0], 2)
             plt.plot(polyline, model(polyline))
         
@@ -319,6 +322,11 @@ def redo_count():
             os.mkdir('/'.join(pathList[0: -1]))
         plt.savefig('/'.join(pathList)[0: -3] + 'png')
         plt.clf()
+
+        degree = sum([math.atan(abs(all_kbs[p_i+1][0] - all_kbs[p_i][0]) / (1 + all_kbs[p_i+1][0] * all_kbs[p_i][0])) for p_i in range(len(all_kbs) - 1)]) / (len(upper_pts) - 1)
+        printLog(auditLog, '[%s] 角度: %f' % (imgName, degree))      
+
+
 
 
 def clear_image_cb(val):
