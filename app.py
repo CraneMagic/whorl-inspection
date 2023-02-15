@@ -244,6 +244,8 @@ def redo_count():
                 prev_x = x
         for roi_index in range(len(roi_pts)):
             cur_roi_pts = roi_pts[roi_index]
+            if not len(cur_roi_pts):
+                continue
             xs = [i[0] for i in cur_roi_pts]
             ys = [i[1] for i in cur_roi_pts]
             [a, b, c] = np.polyfit(xs, ys, 2)
@@ -297,6 +299,26 @@ def redo_count():
         dim = dimedivision.get()
         printLog(auditLog, '[%s] 牙顶平均: %f px; 牙底平均: %f px; 齿距: %f px (%f mm)' % (imgName, upper_dst, lower_dst, (upper_dst + lower_dst) / 2, (upper_dst + lower_dst) / 2 / dim))      
         
+
+        # line
+        plt.xlim(0, 2000)
+        plt.ylim(0, 1000)
+        all_pts = upper_pts + lower_pts
+        all_pts = sorted(all_pts,key=lambda l:l[0])
+        printLog(auditLog, '[%s] %s' % (imgName, str(all_pts)))
+        for ap_i in range(len(all_pts) - 1):
+            [a, b] = np.polyfit([all_pts[ap_i][0], all_pts[ap_i+1][0]], [all_pts[ap_i][1], all_pts[ap_i+1][1]], 1)
+            print([a, b])
+            model = np.poly1d([a, b])
+            polyline = np.linspace(all_pts[ap_i][0], all_pts[ap_i+1][0], 2)
+            plt.plot(polyline, model(polyline))
+        
+        pathList = imagePath.split('/')
+        pathList.insert(-1, 'polyfit_line_result')
+        if not os.path.exists('/'.join(pathList[0: -1])):
+            os.mkdir('/'.join(pathList[0: -1]))
+        plt.savefig('/'.join(pathList)[0: -3] + 'png')
+        plt.clf()
 
 
 def clear_image_cb(val):
